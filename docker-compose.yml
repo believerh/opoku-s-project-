@@ -1,0 +1,54 @@
+# One-command VPS deployment: app + MongoDB + automatic HTTPS (Caddy).
+# Needs a .env file next to this one (copy .env.example). Extra variables used here:
+#   DOMAIN, MONGO_USER, MONGO_PASSWORD  (use letters and numbers only in MONGO_PASSWORD)
+services:
+  app:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      SITE_URL: https://${DOMAIN}
+      TRUST_PROXY: "1"
+      UPLOAD_DIR: /data/uploads
+      MONGODB_URI: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017/okomfo_anokye?authSource=admin
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      - mongo
+    expose:
+      - "3000"
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+    # No "ports:" on purpose: the database is reachable only by the app, never from the internet.
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  uploads:
+  mongo_data:
+  caddy_data:
+  caddy_config:

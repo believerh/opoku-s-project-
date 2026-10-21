@@ -1,9 +1,0 @@
-{
-  "name": "Okomfo Anokye Updates",
-  "short_name": "OA Updates",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#f5f7f4",
-  "theme_color": "#075C38",
-  "description": "School news, announcements, events and trends."
-}

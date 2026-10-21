@@ -1,0 +1,10 @@
+# Caddy gets and renews the HTTPS certificate automatically.
+# Used by docker-compose.yml. On a VPS WITHOUT Docker, replace "app:3000" with "127.0.0.1:3000"
+# and replace {$DOMAIN} with your domain name.
+{$DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 60MB
+	}
+	reverse_proxy app:3000
+}

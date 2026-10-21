@@ -1,46 +1,74 @@
-OKOMFO ANOKYE UPDATES — UPGRADE STARTER
-========================================
+OKOMFO ANOKYE UPDATES — v3 (Express + MongoDB + Brevo)
+=======================================================
 
-WHAT THIS VERSION DOES
-- Reads published posts from shared Supabase online storage.
-- Provides an admin email/password login (not the old DEMO-ADMIN code).
-- Restricts creating, editing, publishing and deleting posts to one configured admin email using database Row Level Security.
-- Uploads images and videos to shared online storage so visitors on different devices can see them.
-- Includes a basic installable web-app manifest and service worker.
+WHAT CHANGED FROM THE SUPABASE VERSION
+- Posts, subscribers and the admin session now live in YOUR server + MongoDB. No Supabase.
+- Pictures/videos are saved on the server's disk (UPLOAD_DIR) and served from /media/.
+- Brevo sends the emails: subscriber confirmation + "new post" alerts.
+- The admin page, hidden #admin route, draft/publish, media removal and all other v2 features are kept.
+- The Netlify static deploy is replaced by a Node server (Netlify cannot run this).
+- Ready to deploy on Railway or a VPS (Docker Compose, systemd/PM2, Caddy/nginx): see DEPLOY.md.
+- New: /healthz health check, graceful restarts, automatic Railway detection (domain + volume).
 
-IMPORTANT LIMITATION
-This package is prepared but is NOT connected to your database yet. It will not publish online until you complete the setup below. The "Get news alerts" button currently asks the visitor to allow browser notifications, but automatic push alerts to subscribers are NOT fully configured in this starter. Real push delivery needs VAPID keys, saved subscriptions, and a server-side sender function. Do not promise readers that they will automatically receive push alerts until that part is installed and tested.
+WHAT YOU NEED
+1. Node.js 20.19 or newer on your host.
+2. A MongoDB database (MongoDB Atlas free tier works; or your own server). Copy its connection string.
+3. A Node host with a PERSISTENT DISK for uploads: Railway (with a volume) or a VPS. DEPLOY.md has
+   step-by-step guides for both. Hosts with temporary storage delete uploads on every restart.
+4. (For email) a free Brevo account.
 
-SETUP (DO THIS IN ORDER)
-1. Create a Supabase project at https://supabase.com/.
-2. In Supabase, open SQL Editor.
-3. Open supabase/schema.sql from this package.
-4. Replace every occurrence of ADMIN_EMAIL with the one email address you want to use as the only administrator. Keep the single quotes around the email.
-5. Run the SQL.
-6. In Supabase Authentication > Users, create/invite that admin email and set a strong password.
-7. In Supabase Authentication settings, disable public sign-ups. Do not create other user accounts.
-8. In Supabase Project Settings > API, copy the Project URL and anon/public key.
-9. Edit config.js and replace YOUR_SUPABASE_PROJECT_URL and YOUR_SUPABASE_ANON_KEY with those values. The anon key is designed to be public; NEVER put the service-role key in config.js.
-10. Upload the contents of this folder to your Netlify site / deploy the folder as a new Netlify deploy.
-11. Test on your phone and another device: public visitors should see posts; only the configured admin should be able to sign in and publish.
+LOCAL TEST / QUICK START (for Railway and VPS steps, read DEPLOY.md)
+1. Unzip, then in the folder run:        npm install
+2. Copy .env.example to .env and fill it in:
+   - MONGODB_URI        your MongoDB connection string
+   - SITE_URL           your public address, e.g. https://school.example.com (no trailing slash)
+   - ADMIN_EMAIL        the one admin email
+   - ADMIN_PASSWORD_HASH  run:  npm run hash -- "a-strong-password"   and paste the output in single quotes
+   - JWT_SECRET         run:  node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   - UPLOAD_DIR         a folder on persistent storage
+   - TRUST_PROXY        1 when behind nginx/Caddy/Railway (default 1)
+   - ALLOWED_ORIGINS    optional extra website addresses allowed to publish
+3. Start:                                npm start
+4. Open the site. Admin login: yoursite.com/#admin  (or tap the "OA" badge 5 times).
+   To change the admin password later: make a new hash and update ADMIN_PASSWORD_HASH, then restart.
 
-HOW TO DEPLOY TO NETLIFY
-- Extract the ZIP on a computer if possible.
-- In Netlify, open your existing site and go to Deploys.
-- Drag the extracted website folder's contents into the manual deploy area, or use Netlify CLI / a connected Git repository.
-- The folder's index.html must be at the root of the deployed site.
+BREVO EMAIL SETUP (optional; leave the Brevo variables blank to turn email alerts off)
+1. Create a Brevo account at https://www.brevo.com/ .
+2. Senders, Domains & Dedicated IPs: add and VERIFY the sender address you will send from.
+   For reliable delivery, authenticate your own domain (SPF/DKIM). Free mailbox addresses like
+   @gmail.com often land in spam when used as the sender.
+3. SMTP & API > API Keys: create a key (starts with xkeysib-) and put it in BREVO_API_KEY.
+4. Set MAIL_FROM_EMAIL to the verified sender and MAIL_FROM_NAME to the display name.
+5. Restart. A "Get news by email" box then appears on the public page.
 
-ADMIN-ONLY RULE
-The website hides the dashboard unless signed in, but the actual protection is enforced by Supabase Row Level Security and Storage policies. This is why you must run the SQL with the correct admin email and disable public sign-ups.
+HOW EMAIL ALERTS WORK
+- Visitors enter their email and must click a confirmation link (double opt-in), so nobody can be
+  subscribed by someone else. Every alert has an Unsubscribe link.
+- When you publish a post, tick "Email confirmed subscribers" and each subscriber gets one email.
+  Each post is emailed only once, even if you unpublish and republish it.
+- Brevo's free plan allows 300 emails per day (and adds a Brevo logo). With more than 300
+  subscribers, some alerts will not be delivered that day. The dashboard shows your subscriber
+  count; upgrade the Brevo plan or keep the list under the limit. Plans and limits change, so
+  check Brevo's pricing page.
+
+SECURITY NOTES
+- Only the one admin can create, edit, hide or delete posts, enforced on the server. The login is
+  rate-limited (10 tries per 15 minutes) and the session is an httpOnly, same-site cookie.
+- Never commit .env. Never share your Brevo key or JWT_SECRET.
+- Serve the site over HTTPS (most hosts do this for you) and keep NODE_ENV=production.
+- Strict security headers and a Content-Security-Policy are set in server.js.
+- If you open the site by a different address than SITE_URL, admin saves will be blocked as
+  "cross-site". Keep SITE_URL equal to the address in the browser.
 
 MEDIA
-- Up to 8 pictures per post, 5 MB each.
-- One video per post, up to 50 MB.
-- Supported types are common images and MP4/WebM/QuickTime videos.
-- Uploaded media is stored online in the Supabase `post-media` bucket.
-
-NEWS ALERTS
-This package does not yet deliver automatic push notifications to all readers. Browser notification permission by itself is not enough. Readers need to subscribe, and a secure server function must send the push messages. This requires additional setup and testing before claiming that all subscribers will receive alerts.
+- Up to 8 pictures per post (5 MB each), one video (50 MB). JPG, PNG, WebP, GIF, AVIF; MP4, WebM, MOV.
+- Back up the UPLOAD_DIR folder along with your database.
 
 PRIVACY
-Because this is a school website, get permission before posting identifiable student photos/videos, and avoid posting private health details or humiliating content.
+Get permission before posting identifiable student photos/videos, and avoid private health details
+or humiliating content. Only email people who subscribed themselves.
+
+WHAT'S NOT INCLUDED
+- Browser push notifications (email alerts replace them).
+- Password reset by email (change the hash in your settings instead).
+- Cloud storage for media (files are on your server's disk).
