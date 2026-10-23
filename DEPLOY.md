@@ -9,7 +9,13 @@ Make those first, on any computer with Node 20.19+:
 npm install
 npm run hash -- "your-strong-password"                                     # -> ADMIN_PASSWORD_HASH
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"   # -> JWT_SECRET
+npm run vapid                                                              # -> VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY (push notifications)
 ```
+
+`ADMIN_EMAIL` and `ADMIN_PASSWORD_HASH` are only used the **first time** the app starts, to create the administrator
+account. After that, passwords are managed inside the site (*My account*). If the admin password is ever lost, run
+`npm run reset-admin -- you@example.com "NewPassword123"` on the server (or in Railway: `railway run npm run reset-admin -- ...`).
+Push notifications need HTTPS (Railway and the Caddy setup provide it).
 
 ---
 
@@ -32,6 +38,7 @@ the attached volume, and Railway uses `/healthz` (from `railway.json`) to know w
    | `ADMIN_EMAIL` | your admin email |
    | `ADMIN_PASSWORD_HASH` | the hash from above (paste as-is) |
    | `JWT_SECRET` | the secret from above |
+   | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | optional, for push notifications (`VAPID_SUBJECT` like `mailto:you@example.com`) |
    | `BREVO_API_KEY`, `MAIL_FROM_EMAIL`, `MAIL_FROM_NAME` | optional, for email alerts |
 
    You do **not** need to set `SITE_URL`, `UPLOAD_DIR` or `NODE_ENV` on Railway.
@@ -62,7 +69,7 @@ cp .env.example .env && nano .env
 ```
 
 In `.env` set: `DOMAIN`, `MONGO_USER`, `MONGO_PASSWORD` (letters and numbers only), `ADMIN_EMAIL`,
-`ADMIN_PASSWORD_HASH` (keep the single quotes), `JWT_SECRET`, and the Brevo values if you want email.
+`ADMIN_PASSWORD_HASH` (keep the single quotes), `JWT_SECRET`, and the `VAPID_*` / Brevo values if you want push / email.
 (`MONGODB_URI`, `SITE_URL` and `UPLOAD_DIR` are filled in by Compose; ignore them.)
 
 ```bash
@@ -130,4 +137,9 @@ Add HTTPS in front (choose one):
 | Login succeeds but you are signed out instantly | The site is being served over plain `http://` in production mode. Use HTTPS (the login cookie is HTTPS-only). |
 | Railway deploy never turns healthy | `MONGODB_URI` is wrong. Check the Mongo service name in `${{MongoDB.MONGO_URL}}` and the deploy logs. |
 | Everyone shares one rate limit / wrong visitor IP | `TRUST_PROXY` should equal the number of proxies in front of the app (1 for Caddy, nginx and Railway). |
+| Notifications never arrive on a phone | Push needs HTTPS and `VAPID_*` set. On iPhone/iPad the visitor must first add the site to the Home Screen and open it from there. Android and desktop browsers work directly. |
+| Pictures fail with "could not be read" | The file is damaged or not a real image. Re-save it as JPG and try again. |
+| `queryTxt ETIMEOUT` / `querySrv ECONNREFUSED` on start | DNS cannot look up your Atlas address (common on Termux/Android and some networks). Set `DNS_SERVERS=8.8.8.8,1.1.1.1` in `.env`, or use Atlas's standard (non "+srv") connection string. |
+| `Server selection timed out` | Atlas is blocking you. In Atlas open *Network Access* and allow your IP (or `0.0.0.0/0` while testing). Also check the database user's password (special characters must be URL-encoded). |
+| "Image resizing is OFF" in the log | The `sharp` image library cannot load on this system (e.g. Termux). The site still works; pictures are saved as uploaded (max 5 MB each). Normal on Linux servers, Railway and Docker. |
 | No confirmation emails | Check `BREVO_API_KEY`, that `MAIL_FROM_EMAIL` is a verified Brevo sender, and Brevo's daily limit. |

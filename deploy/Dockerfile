@@ -4,7 +4,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
-COPY server.js ./
+COPY server.js db.js ./
 COPY public ./public
 COPY scripts ./scripts
 ENV UPLOAD_DIR=/data/uploads

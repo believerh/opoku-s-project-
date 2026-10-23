@@ -1,5 +1,26 @@
-OKOMFO ANOKYE UPDATES — v3 (Express + MongoDB + Brevo)
-=======================================================
+OKOMFO ANOKYE UPDATES — v4 (Express + MongoDB + Brevo + Push)
+=============================================================
+
+NEW IN v4
+- Every post has its own link (/post/ID) with a Share button and a preview card, so links pasted into
+  WhatsApp/Facebook show the title and picture.
+- Pictures are resized automatically (max 1600px, saved as WebP) and camera location data is removed.
+  Originals up to 15 MB are accepted. Videos are stored as uploaded (max 50 MB).
+- Scheduled publishing: pick a date/time and the post goes live by itself (checked every minute).
+- Pinned notices: pin an important post to the top, optionally unpinning itself after a date.
+- Post view counts (one per browser per day; bots are ignored; counts are approximate).
+- Teacher accounts with approval: the administrator adds teachers. Teachers write posts and submit them;
+  only the administrator can publish. Rejected posts come back with a reason. Teachers see only their own posts.
+- Activity log (administrator only): who published, edited, approved, rejected, deleted, scheduled, signed in, etc.
+  Kept for 180 days.
+- Real push notifications to phones and computers (needs HTTPS), alongside email alerts.
+- Admin sign-in is now an account in the database. Admins and teachers change their own password under "My account".
+  The old ADMIN_PASSWORD_HASH is only used to create the first administrator.
+
+(The notes below still apply; the features above are in addition.)
+
+PREVIOUS VERSION NOTES (v3: Express + MongoDB + Brevo)
+------------------------------------------------------
 
 WHAT CHANGED FROM THE SUPABASE VERSION
 - Posts, subscribers and the admin session now live in YOUR server + MongoDB. No Supabase.
@@ -68,7 +89,22 @@ PRIVACY
 Get permission before posting identifiable student photos/videos, and avoid private health details
 or humiliating content. Only email people who subscribed themselves.
 
+PUSH NOTIFICATIONS
+- Run  npm run vapid  once and put the two keys in VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY (plus VAPID_SUBJECT).
+  Do not change the keys later, or everyone has to turn notifications on again.
+- Visitors tap "Get notifications on this device". Android and desktop browsers work directly. On iPhone/iPad
+  the visitor must first add the site to the Home Screen and open it from there.
+- Tick "Notify subscribers" when publishing (or confirm the prompt when approving) to send email + push once.
+- Only real browser push services are accepted as destinations, and dead devices are removed automatically.
+
+TEACHERS AND APPROVAL
+- Administrator: Team tab > Add teacher (name, email, temporary password). Share the password privately.
+- Teachers sign in at yoursite.com/#admin, write a post and press "Submit for approval".
+- Administrator: Review tab > Approve (publishes now) or Reject (with a reason the teacher sees).
+- Deactivating a teacher signs them out immediately.
+
 WHAT'S NOT INCLUDED
-- Browser push notifications (email alerts replace them).
-- Password reset by email (change the hash in your settings instead).
+- Events with dates/"add to calendar" and a weekly email digest (suggested earlier, not built yet).
+- Video compression (videos are stored as uploaded).
+- Password reset by email (use  npm run reset-admin  on the server).
 - Cloud storage for media (files are on your server's disk).
